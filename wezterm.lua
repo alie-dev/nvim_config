@@ -9,6 +9,9 @@ end
 config.font = wezterm.font{family = "MesloLGS Nerd Font Mono", weight = "Regular"}
 config.font_size = 17
 
+config.line_height = 1.30
+
+
 config.colors = {
   foreground = "#dcdcdc", -- 연한 회색 글자
   background = "#1e1e1e", -- 딱 Visual Studio Code Dark 같은 검회색

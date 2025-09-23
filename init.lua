@@ -21,3 +21,4 @@ require("keymaps")
 
 -- color theme apply
 vim.cmd("colorscheme onedark")
+require("telescope").load_extension("persisted")  -- 1회만
