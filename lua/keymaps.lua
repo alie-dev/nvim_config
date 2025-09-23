@@ -11,7 +11,8 @@ map("n", "<M-1>", "<cmd>Neotree toggle left reveal_force_cwd<CR>", { silent = tr
 
 -- 버퍼 닫기
 map("n", "<M-w>", "<cmd>confirm bdelete<CR>", { silent = true, desc = "Close buffer" })
-
+-- 자신을 제외한 모든 버퍼 닫기
+map("n", "<M-W>", "<cmd>BufferLineCloseLeft<CR><cmd>BufferLineCloseRight<CR>", { silent = true })
 
 
 -- 빈 줄 추가 / 라인 삭제
