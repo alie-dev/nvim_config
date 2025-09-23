@@ -30,7 +30,7 @@ config.macos_window_background_blur = 20
 config.inactive_pane_hsb = { saturation = 0.9, brightness = 0.8 }
 
 -- 여백 주기(상단·좌우 살짝 여유)
-config.window_padding = { left = 8, right = 8, top = 4, bottom = 4 }
+config.window_padding = { left = 0, right = 0, top = 0, bottom = 0 }
 
 -- 모든 기본 단축키 제거
 config.disable_default_key_bindings = true

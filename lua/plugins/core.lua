@@ -131,12 +131,12 @@ return {
     theme = "onedark",
     globalstatus = true,
     -- 반원/화살표 없애기
-    section_separators = { left = "", right = "" },
+    section_separators = { left = "", right = "" },
     -- 왼쪽 컴포넌트들 사이에는 "/" 스타일, 오른쪽은 없음
     component_separators = { left = "/", right = "" },
   },
   sections = {
-    lualine_a = { { "mode", icon = "", padding = { left = 2, right = 2 } } },
+    lualine_a = { { "mode", padding = { left = 2, right = 2 } } },
     lualine_b = {
       { "branch", icon = "", padding = { left = 1, right = 1 } },
       { "diff",   symbols = { added = "+", modified = "~", removed = "-" }, padding = { left = 1, right = 1 } },
