@@ -118,91 +118,100 @@ return {
 
   -- 🔹 LSP 설정 (lspconfig만 사용: 수동 vim.lsp.start() 제거)
   {
-    "neovim/nvim-lspconfig",
-    lazy = false,
-    config = function()
-      local lspconfig = require("lspconfig")
-      local util = require("lspconfig.util")
-      local caps = require("cmp_nvim_lsp").default_capabilities()
+  "neovim/nvim-lspconfig",
+  lazy = false,
+  config = function()
+    -- 더 이상: local lspconfig = require("lspconfig")  ← ❌
+    local util = require("lspconfig.util")  -- 유틸은 그대로 사용 가능
+    local caps = require("cmp_nvim_lsp").default_capabilities()
 
-      local function on_attach(_, bufnr)
-        local function map(m, lhs, rhs, desc)
-          vim.keymap.set(m, lhs, rhs, { buffer = bufnr, silent = true, desc = desc })
-        end
-        map("n", "gd", vim.lsp.buf.definition, "LSP: Goto Definition")
-        map("n", "<leader>rn", vim.lsp.buf.rename,      "LSP: Rename")
-        map("n", "<leader>ca", vim.lsp.buf.code_action, "LSP: Code Action")
-        map("n", "gr", vim.lsp.buf.references,          "LSP: References")
-
-        -- Inlay hints (NVIM 0.11)
-        if vim.lsp.inlay_hint and vim.lsp.inlay_hint.enable then
-          pcall(vim.lsp.inlay_hint.enable, bufnr, true)
-        end
+    local function on_attach(_, bufnr)
+      local function map(m, lhs, rhs, desc)
+        vim.keymap.set(m, lhs, rhs, { buffer = bufnr, silent = true, desc = desc })
       end
+      map("n", "gd",         vim.lsp.buf.definition, "LSP: Goto Definition")
+      map("n", "<leader>rn", vim.lsp.buf.rename,     "LSP: Rename")
+      map("n", "<leader>ca", vim.lsp.buf.code_action,"LSP: Code Action")
+      map("n", "gr",         vim.lsp.buf.references, "LSP: References")
 
-      -- TypeScript / JavaScript
-      lspconfig.ts_ls.setup({
-        capabilities = caps,
-        on_attach = on_attach,
-        root_dir = function(fname)
-          return util.root_pattern("tsconfig.json", "package.json", ".git")(fname)
-            or util.path.dirname(fname)
-        end,
-      })
+      -- Inlay hints (NVIM 0.11)
+      if vim.lsp.inlay_hint and vim.lsp.inlay_hint.enable then
+        pcall(vim.lsp.inlay_hint.enable, bufnr, true)
+      end
+    end
 
-      -- Tailwind CSS
-      lspconfig.tailwindcss.setup({
-        capabilities = caps,
-        on_attach = on_attach,
-        -- 기본 root_dir가 충분히 잘 동작. 별도 설정 불필요.
-        settings = {
-          tailwindCSS = {
-            experimental = {
-              classRegex = { "tw`([^`]*)", 'tw\\("([^"]*)', "tw\\('([^']*)" },
-            },
+    -- TypeScript / JavaScript
+    vim.lsp.config("ts_ls", {
+      capabilities = caps,
+      on_attach = on_attach,
+      root_dir = function(fname)
+        return util.root_pattern("tsconfig.json", "package.json", ".git")(fname)
+          or util.path.dirname(fname)
+      end,
+    })
+
+    -- Tailwind CSS
+    vim.lsp.config("tailwindcss", {
+      capabilities = caps,
+      on_attach = on_attach,
+      settings = {
+        tailwindCSS = {
+          experimental = {
+            -- 역따옴표/따옴표 이스케이프 주의
+            classRegex = { "tw`([^`]*)", 'tw%("([^"]*)', "tw%('([^']*)" },
           },
         },
-      })
+      },
+    })
 
-      -- ESLint (프로젝트 루트에서만 의미가 있으므로 root 없으면 자동으로 안 붙음)
-      lspconfig.eslint.setup({
-        capabilities = caps,
-        on_attach = function(client, bufnr)
-          on_attach(client, bufnr)
-          vim.api.nvim_create_autocmd("BufWritePre", {
-            buffer = bufnr,
-            callback = function() pcall(vim.cmd, "EslintFixAll") end,
-          })
-        end,
-      })
+    -- ESLint
+    vim.lsp.config("eslint", {
+      capabilities = caps,
+      on_attach = function(client, bufnr)
+        on_attach(client, bufnr)
+        vim.api.nvim_create_autocmd("BufWritePre", {
+          buffer = bufnr,
+          callback = function() pcall(vim.cmd, "EslintFixAll") end,
+        })
+      end,
+      root_dir = function(fname)
+        return util.root_pattern(".eslintrc", ".eslintrc.js", ".eslintrc.cjs",
+                                 ".eslintrc.json", "package.json", ".git")(fname)
+          or util.path.dirname(fname)
+      end,
+    })
 
-      -- Lua (NVIM 설정 포함 케이스 대비: root_dir 폴백 확실히)
-      lspconfig.lua_ls.setup({
-        capabilities = caps,
-        on_attach = on_attach,
-        root_dir = function(fname)
-          return util.root_pattern(
-            ".luarc.json", ".luarc.jsonc",
-            ".luacheckrc",
-            ".stylua.toml", "stylua.toml",
-            "selene.toml", "selene.yml",
-            ".git"
-          )(fname) or util.path.dirname(fname) or vim.fn.getcwd()
-        end,
-        settings = {
-          Lua = {
-            diagnostics = { globals = { "vim" } },
-            workspace = {
-              checkThirdParty = false,
-              library = vim.api.nvim_get_runtime_file("", true),
-            },
-            telemetry = { enable = false },
+    -- Lua (lua_ls)
+    vim.lsp.config("lua_ls", {
+      capabilities = caps,
+      on_attach = on_attach,
+      root_dir = function(fname)
+        return util.root_pattern(
+          ".luarc.json", ".luarc.jsonc",
+          ".luacheckrc",
+          ".stylua.toml", "stylua.toml",
+          "selene.toml", "selene.yml",
+          ".git"
+        )(fname) or util.path.dirname(fname) or vim.fn.getcwd()
+      end,
+      settings = {
+        Lua = {
+          diagnostics = { globals = { "vim" } },
+          workspace = {
+            checkThirdParty = false,
+            library = vim.api.nvim_get_runtime_file("", true),
           },
+          telemetry = { enable = false },
         },
-      })
-    end,
-  },
+      },
+    })
 
+    -- 실제로 서버들을 켜기
+    for _, name in ipairs({ "ts_ls", "tailwindcss", "eslint", "lua_ls" }) do
+      vim.lsp.enable(name)
+    end
+  end,
+},
   -- 🔹 Prettier/ESLint_d (none-ls)
   {
     "nvimtools/none-ls.nvim",
