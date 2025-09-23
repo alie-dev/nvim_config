@@ -13,18 +13,11 @@ require("lazy").setup({
 spec = { { import = "plugins" } }, -- lua/plugins/*.lua 자동 로드
 })
 
--- 3) 색상/플러그인 개별 설정 불러오기
-require("config.lualine")
-require("config.trouble")
-require("config.neotree")
-require("config.bufferline")
-require("config.gitsigns")
-
-
 -- 자동저장
 require("auto_save")
 
 -- 키맵 (motions 포함)
 require("keymaps")
 
-
+-- color theme apply
+vim.cmd("colorscheme onedark")
