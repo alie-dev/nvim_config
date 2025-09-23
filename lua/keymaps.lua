@@ -104,37 +104,28 @@ map("x", "L", function() x_vis("l") end, { noremap = true, silent = true, desc =
 -- 🔑 LspAttach: 버퍼 로컬 LSP 키맵
 local grp = vim.api.nvim_create_augroup("MyLspKeys", { clear = true })
 vim.api.nvim_create_autocmd("LspAttach", {
-  group = grp,
+  group = vim.api.nvim_create_augroup("MyLspKeys", { clear = true }),
   callback = function(ev)
-    local ok = pcall(function()
-      local bufnr = ev.buf
-      if not bufnr or not vim.api.nvim_buf_is_loaded(bufnr) then return end
+    local bufnr = ev.buf
+    local cid   = ev.data and ev.data.client_id
+    local client = cid and vim.lsp.get_client_by_id(cid)
+    if not (bufnr and client) then return end
 
-      local cid = ev.data and ev.data.client_id
-      if not cid then return end
-      local client = vim.lsp.get_client_by_id(cid)
-      if not client then return end
+    local function has(m)
+      return client.supports_method and client:supports_method(m)
+    end
+    local function map(m, lhs, rhs, desc)
+      vim.keymap.set(m, lhs, rhs, { buffer = bufnr, silent = true, desc = desc })
+    end
 
-      local function map_local(m, lhs, rhs, desc)
-        if type(rhs) == "function" then
-          vim.keymap.set(m, lhs, rhs, { buffer = bufnr, silent = true, desc = desc })
-        end
-      end
+    if has("textDocument/definition") then map("n","gd",vim.lsp.buf.definition,"LSP: Definition") end
+    if has("textDocument/hover")      then map("n","e", vim.lsp.buf.hover,     "LSP: Hover")      end
+    if has("textDocument/rename")     then map("n","<leader>rn",vim.lsp.buf.rename,"LSP: Rename")  end
+    if has("textDocument/codeAction") then map("n","<leader>ca",vim.lsp.buf.code_action,"LSP: Code Action") end
+    -- gr는 전역 매핑으로 빼놨으니 여기선 안 잡아도 됨
 
-      map_local("n", "gd", vim.lsp.buf.definition,        "LSP: Goto Definition")
-      map_local("n", "e",  vim.lsp.buf.hover,              "LSP: Hover")
-      map_local("n", "<leader>rn", vim.lsp.buf.rename,     "LSP: Rename")
-      map_local("n", "<leader>ca", vim.lsp.buf.code_action,"LSP: Code Action")
-      map_local("n", "gr", vim.lsp.buf.references,         "LSP: References")
-
-      if vim.lsp.inlay_hint and vim.lsp.inlay_hint.enable then
-        pcall(vim.lsp.inlay_hint.enable, bufnr, true)
-      end
-    end)
-    if not ok then
-      vim.schedule(function()
-        vim.notify("LspAttach keymaps failed (suppressed). Check keymaps.lua", vim.log.levels.WARN)
-      end)
+    if vim.lsp.inlay_hint and vim.lsp.inlay_hint.enable then
+      pcall(vim.lsp.inlay_hint.enable, bufnr, true)
     end
   end,
 })
@@ -174,6 +165,40 @@ map({ "n", "x" }, "<M-k>", "<C-u>zz", { noremap = true, silent = true, desc = "H
 
 -- 전체 선택
 map({ "n","x" }, "<M-a>", "ggVG", { desc = "Select all" })
+
+-- Neovim 0.11: get_clients로 대체
+local function lsp_supports(bufnr, method)
+  for _, c in pairs(vim.lsp.get_clients({ bufnr = bufnr })) do
+    if c.supports_method and c:supports_method(method) then
+      return true
+    end
+  end
+  return false
+end
+
+vim.keymap.set("n", "gr", function()
+  local bufnr = vim.api.nvim_get_current_buf()
+  if lsp_supports(bufnr, "textDocument/references") then
+    -- 지원 서버가 있으면 LSP 참조를 우선
+    local ok, tb = pcall(require, "telescope.builtin")
+    if ok then
+      tb.lsp_references({ include_declaration = false, show_line = false })
+    else
+      vim.lsp.buf.references(nil, { loclist = true })
+      vim.cmd("lopen")  -- 목록창 열어주기
+    end
+  else
+    -- 지원 서버 없으면 grep 폴백 (에러 안 뜸)
+    local w = vim.fn.expand("<cword>")
+    local ok, tb = pcall(require, "telescope.builtin")
+    if ok then
+      tb.grep_string({ search = w })
+    else
+      vim.cmd("silent! vimgrep /\\<"..w.."\\>/gj **/* | copen")
+    end
+  end
+end, { silent = true, desc = "References (smart: LSP→Telescope/grep)" })
+
 
 -- -, _으로 범위 변경하는것은 webdev.lua의 페이지에nvim-treesitter.configs 내부에 설정되어있다
 

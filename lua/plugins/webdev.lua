@@ -125,30 +125,29 @@ return {
     local util = require("lspconfig.util")  -- 유틸은 그대로 사용 가능
     local caps = require("cmp_nvim_lsp").default_capabilities()
 
-    local function on_attach(_, bufnr)
-      local function map(m, lhs, rhs, desc)
-        vim.keymap.set(m, lhs, rhs, { buffer = bufnr, silent = true, desc = desc })
-      end
-      map("n", "gd",         vim.lsp.buf.definition, "LSP: Goto Definition")
-      map("n", "<leader>rn", vim.lsp.buf.rename,     "LSP: Rename")
-      map("n", "<leader>ca", vim.lsp.buf.code_action,"LSP: Code Action")
-      map("n", "gr",         vim.lsp.buf.references, "LSP: References")
-
-      -- Inlay hints (NVIM 0.11)
-      if vim.lsp.inlay_hint and vim.lsp.inlay_hint.enable then
-        pcall(vim.lsp.inlay_hint.enable, bufnr, true)
-      end
-    end
-
     -- TypeScript / JavaScript
     vim.lsp.config("ts_ls", {
-      capabilities = caps,
-      on_attach = on_attach,
-      root_dir = function(fname)
-        return util.root_pattern("tsconfig.json", "package.json", ".git")(fname)
-          or util.path.dirname(fname)
-      end,
-    })
+  capabilities = caps,
+  single_file_support = true,  -- 루트 못 잡아도 붙게
+  cmd = { vim.fn.exepath("typescript-language-server"), "--stdio" }, -- 실행파일 확실히 고정
+  filetypes = { "typescript", "typescriptreact", "javascript", "javascriptreact" },
+  root_dir = function(fname)
+    -- 1) 보편 루트
+    local root = util.root_pattern("tsconfig.json", "jsconfig.json", "package.json", ".git")(fname)
+               or util.find_git_ancestor(fname)
+               or util.path.dirname(fname)
+    -- 디버그 출력
+    vim.schedule(function()
+      vim.notify("[ts_ls] root_dir = " .. (root or "nil") .. " (file=" .. fname .. ")", vim.log.levels.INFO)
+    end)
+    return root
+  end,
+  on_init = function(client, _)
+    vim.schedule(function()
+      vim.notify("[ts_ls] started: " .. table.concat(client.config.cmd or {}, " "), vim.log.levels.INFO)
+    end)
+  end,
+})
 
     -- Tailwind CSS
     vim.lsp.config("tailwindcss", {
