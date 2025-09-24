@@ -104,7 +104,7 @@ return {
     config = function()
       -- LSP 이름
       local function lsp_name()
-        local clients = vim.lsp.get_active_clients({ bufnr = 0 })
+        local clients = vim.lsp.get_clients({ bufnr = 0 })
         if #clients == 0 then return "" end
         local names = {}
         for _, c in ipairs(clients) do names[#names+1] = c.name end
@@ -148,7 +148,7 @@ return {
     },
     lualine_x = {
       function()
-        local cs = vim.lsp.get_active_clients({ bufnr = 0 })
+        local cs = vim.lsp.get_clients({ bufnr = 0 })
         if #cs == 0 then return "" end
         local names = {}
         for _, c in ipairs(cs) do names[#names+1] = c.name end

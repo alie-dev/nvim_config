@@ -63,11 +63,3 @@ vim.api.nvim_create_autocmd({ "FocusLost", "BufLeave" }, {
   end,
 })
 
--- 토글 커맨드/맵핑
-vim.api.nvim_create_user_command("AutosaveToggle", function()
-  vim.g.autosave_enabled = not vim.g.autosave_enabled
-  vim.notify("Autosave: " .. (vim.g.autosave_enabled and "ON" or "OFF"))
-end, {})
-
-vim.keymap.set("n", "<leader>as", "<cmd>AutosaveToggle<CR>", { desc = "Toggle autosave" })
-
