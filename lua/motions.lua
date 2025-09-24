@@ -260,5 +260,19 @@ function M.smart_b_operator()
   return "v" .. keys
 end
 
+-- motions.lua
+function M.lsp_supports(bufnr, method)
+  if type(bufnr) ~= "number" or bufnr == 0 then
+    bufnr = vim.api.nvim_get_current_buf()
+  end
+  for _, c in pairs(vim.lsp.get_clients({ bufnr = bufnr })) do
+    if c.supports_method and c:supports_method(method) then return true end
+  end
+  return false
+end
+
+function M.have(mod) return pcall(require, mod) end
+
 return M
+
 

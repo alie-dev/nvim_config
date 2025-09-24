@@ -2,6 +2,9 @@
 local map = vim.keymap.set
 
 local motions = require("motions")
+
+-- <leader>를 스페이스로 전환
+
 -- 버퍼 이동 (WezTerm: Cmd+Shift+[ / ] → Alt+H / Alt+L 로 전달)
 map("n", "<M-{>", ":bprevious<CR>", { silent = true, desc = "Prev buffer" })
 map("n", "<M-}>", ":bnext<CR>",     { silent = true, desc = "Next buffer" })
@@ -101,34 +104,6 @@ map("x", "L", function() x_vis("l") end, { noremap = true, silent = true, desc =
 
 
 
--- 🔑 LspAttach: 버퍼 로컬 LSP 키맵
-local grp = vim.api.nvim_create_augroup("MyLspKeys", { clear = true })
-vim.api.nvim_create_autocmd("LspAttach", {
-  group = vim.api.nvim_create_augroup("MyLspKeys", { clear = true }),
-  callback = function(ev)
-    local bufnr = ev.buf
-    local cid   = ev.data and ev.data.client_id
-    local client = cid and vim.lsp.get_client_by_id(cid)
-    if not (bufnr and client) then return end
-
-    local function has(m)
-      return client.supports_method and client:supports_method(m)
-    end
-    local function map(m, lhs, rhs, desc)
-      vim.keymap.set(m, lhs, rhs, { buffer = bufnr, silent = true, desc = desc })
-    end
-
-    if has("textDocument/definition") then map("n","gd",vim.lsp.buf.definition,"LSP: Definition") end
-    if has("textDocument/hover")      then map("n","e", vim.lsp.buf.hover,     "LSP: Hover")      end
-    if has("textDocument/rename")     then map("n","<leader>rn",vim.lsp.buf.rename,"LSP: Rename")  end
-    if has("textDocument/codeAction") then map("n","<leader>ca",vim.lsp.buf.code_action,"LSP: Code Action") end
-    -- gr는 전역 매핑으로 빼놨으니 여기선 안 잡아도 됨
-
-    if vim.lsp.inlay_hint and vim.lsp.inlay_hint.enable then
-      pcall(vim.lsp.inlay_hint.enable, bufnr, true)
-    end
-  end,
-})
 
 -- 현재만 남기고 전부 닫기
 local function close_others_keep_current()
@@ -167,18 +142,13 @@ map({ "n", "x" }, "<M-k>", "<C-u>zz", { noremap = true, silent = true, desc = "H
 map({ "n","x" }, "<M-a>", "ggVG", { desc = "Select all" })
 
 -- Neovim 0.11: get_clients로 대체
-local function lsp_supports(bufnr, method)
-  for _, c in pairs(vim.lsp.get_clients({ bufnr = bufnr })) do
-    if c.supports_method and c:supports_method(method) then
-      return true
-    end
-  end
-  return false
-end
 
+
+
+-- 그 함수, 클래스를 위주로 조사
 vim.keymap.set("n", "gr", function()
   local bufnr = vim.api.nvim_get_current_buf()
-  if lsp_supports(bufnr, "textDocument/references") then
+  if motions.lsp_supports(bufnr, "textDocument/references") then
     -- 지원 서버가 있으면 LSP 참조를 우선
     local ok, tb = pcall(require, "telescope.builtin")
     if ok then
@@ -198,6 +168,51 @@ vim.keymap.set("n", "gr", function()
     end
   end
 end, { silent = true, desc = "References (smart: LSP→Telescope/grep)" })
+
+
+-- keymaps.lua (gd)
+vim.keymap.set("n", "gd", function()
+  local bufnr = vim.api.nvim_get_current_buf()
+  if motions.lsp_supports(bufnr, "textDocument/definition") then
+    local ok, tb = motions.have("telescope.builtin")
+    if ok then tb.lsp_definitions({ reuse_win = true }) else vim.lsp.buf.definition() end
+  else
+    vim.notify("No LSP definitions for this buffer", vim.log.levels.WARN)
+  end
+end, { silent = true, desc = "LSP Definition" })
+
+
+
+-- hover: 너는 'e'를 쓰고 있으니 그대로 유지 (충돌 감수)
+vim.keymap.set("n", "e", function()
+  local bufnr = 0
+  if motions.lsp_supports(bufnr, "textDocument/hover") then
+    vim.lsp.buf.hover()
+  else
+    vim.notify("No LSP provides hover for this buffer", vim.log.levels.WARN)
+  end
+end, { silent = true, desc = "Hover" })
+
+-- rename
+vim.keymap.set("n", "<leader>rn", function()
+  local bufnr = 0
+  if motions.lsp_supports(bufnr, "textDocument/rename") then
+    vim.lsp.buf.rename()
+  else
+    vim.notify("No LSP provides rename for this buffer", vim.log.levels.WARN)
+  end
+end, { silent = true, desc = "Rename symbol" })
+
+-- code action
+vim.keymap.set("n", "<leader>ca", function()
+  local bufnr = 0
+  if motions.lsp_supports(bufnr, "textDocument/codeAction") then
+    local ok, tb = motions.have("telescope.builtin")
+    if ok then tb.lsp_code_actions() else vim.lsp.buf.code_action() end
+  else
+    vim.notify("No LSP provides code actions for this buffer", vim.log.levels.WARN)
+  end
+end, { silent = true, desc = "Code action" })
 
 
 -- -, _으로 범위 변경하는것은 webdev.lua의 페이지에nvim-treesitter.configs 내부에 설정되어있다
