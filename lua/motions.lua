@@ -332,5 +332,22 @@ end
 function M.have(mod)
 	return pcall(require, mod)
 end
-
+-- utils/root.lua 같은 곳에
+function M.project_root()
+  -- 1) LSP 루트 우선
+  local clients = vim.lsp.get_clients({ bufnr = 0 })
+  for _, c in ipairs(clients) do
+    local rd = c.config and c.config.root_dir
+    if rd and vim.fn.isdirectory(rd) == 1 then
+      return rd
+    end
+  end
+  -- 2) git 루트
+  local git = vim.fn.systemlist("git -C " .. vim.fn.expand("%:p:h") .. " rev-parse --show-toplevel")[1]
+  if vim.v.shell_error == 0 and git and git ~= "" then
+    return git
+  end
+  -- 3) fallback: 현재 작업 디렉토리
+  return vim.loop.cwd()
+end
 return M

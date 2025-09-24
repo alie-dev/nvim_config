@@ -1,133 +1,135 @@
--- keymaps.lua
+-- keymaps.lua (cleaned)
+-- =========================================================
+-- Aliases / Requires
+-- =========================================================
 local map = vim.keymap.set
+local motions = require("motions") -- 사용자 모듈 (smart_w/b, lsp_supports, project_root 등)
 
-local motions = require("motions")
+-- 안전한 require (미설치/지연 로드 대비)
+local function safe_require(mod)
+	local ok, m = pcall(require, mod)
+	return ok and m or nil
+end
 
--- <leader>를 스페이스로 전환
+-- 공통: 진단 팝업 옵션
+local diag_float_opts = { border = "rounded", focus = false, source = "if_many" }
 
--- 버퍼 이동 (WezTerm: Cmd+Shift+[ / ] → Alt+H / Alt+L 로 전달)
-map("n", "<M-{>", ":bprevious<CR>", { silent = true, desc = "Prev buffer" })
-map("n", "<M-}>", ":bnext<CR>", { silent = true, desc = "Next buffer" })
+-- =========================================================
+-- 기본 편의 키
+-- =========================================================
 
--- Neo-tree 토글 (WezTerm: Cmd+1 → Alt+1)
+-- 버퍼 이동 (WezTerm: Cmd+Shift+[ / ] → Alt+{ / Alt+})
+map("n", "<M-{>", "<cmd>bprevious<CR>", { silent = true, desc = "Prev buffer" })
+map("n", "<M-}>", "<cmd>bnext<CR>", { silent = true, desc = "Next buffer" })
+
+-- 파일 트리 (WezTerm: Cmd+1 → Alt+1)
 map("n", "<M-1>", "<cmd>Neotree toggle left reveal_force_cwd<CR>", { silent = true, desc = "Toggle file tree" })
 
--- 버퍼 닫기
+-- 버퍼 닫기 / 기타 버퍼 닫기
 map("n", "<M-w>", "<cmd>confirm bdelete<CR>", { silent = true, desc = "Close buffer" })
--- 자신을 제외한 모든 버퍼 닫기
-map("n", "<M-W>", "<cmd>BufferLineCloseLeft<CR><cmd>BufferLineCloseRight<CR>", { silent = true })
+map(
+	"n",
+	"<M-W>",
+	"<cmd>BufferLineCloseLeft<CR><cmd>BufferLineCloseRight<CR>",
+	{ silent = true, desc = "Close others (sides)" }
+)
 
 -- 빈 줄 추가 / 라인 삭제
 map("n", "<M-CR>", "o<Esc>", { silent = true, desc = "Add blank line below (stay)" })
 map("n", "<M-BS>", "dd", { silent = true, desc = "Delete line (dd)" })
 
--- 버퍼라인 숫자 점프 (Space+1..9)
+-- Bufferline 숫자 점프 (Space+1..9)
 for i = 1, 9 do
 	map("n", "<leader>" .. i, function()
-		require("bufferline").go_to(i, true)
+		local bl = safe_require("bufferline")
+		if bl then
+			bl.go_to(i, true)
+		else
+			vim.notify("bufferline not available", vim.log.levels.WARN)
+		end
 	end, { desc = "Go to buffer " .. i })
 end
 
--- 스마트 모션(w/b)
-map("n", "w", motions.smart_w_normal, { noremap = true, silent = true, desc = "Smart token toggle (UTF-8)" })
-map("x", "w", motions.smart_w_visual, { noremap = true, silent = true, desc = "Smart token toggle (UTF-8)" })
-map(
-	"o",
-	"w",
-	motions.smart_w_operator,
-	{ noremap = true, silent = true, expr = true, desc = "Smart token toggle (UTF-8)" }
-)
+-- =========================================================
+-- 스마트 모션 (motions 모듈)
+-- =========================================================
+map("n", "w", motions.smart_w_normal, { noremap = true, silent = true, desc = "Smart token →" })
+map("x", "w", motions.smart_w_visual, { noremap = true, silent = true, desc = "Smart token →" })
+map("o", "w", motions.smart_w_operator, { noremap = true, silent = true, expr = true, desc = "Smart token →" })
 
-map("n", "b", motions.smart_b_normal, { noremap = true, silent = true, desc = "Smart token reverse (UTF-8)" })
-map("x", "b", motions.smart_b_visual, { noremap = true, silent = true, desc = "Smart token reverse (UTF-8)" })
-map(
-	"o",
-	"b",
-	motions.smart_b_operator,
-	{ noremap = true, silent = true, expr = true, desc = "Smart token reverse (UTF-8)" }
-)
+map("n", "b", motions.smart_b_normal, { noremap = true, silent = true, desc = "Smart token ←" })
+map("x", "b", motions.smart_b_visual, { noremap = true, silent = true, desc = "Smart token ←" })
+map("o", "b", motions.smart_b_operator, { noremap = true, silent = true, expr = true, desc = "Smart token ←" })
 
--- Alt+h / Alt+l : 커서만 좌우 끝으로 (그대로 유지)
+-- 라인 시작/끝 이동 (커서만)
 map({ "n", "x", "o" }, "<M-h>", function()
 	vim.cmd("normal! 0")
-end, { noremap = true, silent = true, desc = "Go line start (col 1)" })
+end, { noremap = true, silent = true, desc = "Go line start" })
 map({ "n", "x", "o" }, "<M-l>", function()
 	vim.cmd("normal! $")
-end, { noremap = true, silent = true, desc = "Go line end ($)" })
+end, { noremap = true, silent = true, desc = "Go line end" })
 
--- Alt+Shift+H / Alt+Shift+L : 선택 확장 (모드별로 동작 분리)
--- Normal: 비주얼 시작 후 확장 / Visual: 비주얼 유지한 채 확장
+-- 라인 전부 선택 확장 (Alt+Shift+H/L)
 map("n", "<M-H>", "v0", { noremap = true, silent = true, desc = "Select to line start" })
-map("x", "<M-H>", "0", { noremap = true, silent = true, desc = "Select to line start" })
-
+map("x", "<M-H>", "0", { noremap = true, silent = true, desc = "Extend to line start" })
 map("n", "<M-L>", "v$", { noremap = true, silent = true, desc = "Select to line end" })
-map("x", "<M-L>", "$", { noremap = true, silent = true, desc = "Select to line end" })
+map("x", "<M-L>", "$", { noremap = true, silent = true, desc = "Extend to line end" })
 
-map({ "n", "x" }, ";", ":", { noremap = true, silent = false, desc = "Command-line" })
+-- 명령행
+map({ "n", "x" }, ";", ":", { noremap = true, desc = "Command-line" })
 
--- 2) f/t 반복키 재배치
-map({ "n", "x", "o" }, "m", ",", { noremap = true, silent = true, desc = "Repeat f/t in reverse (prev)" })
+-- f/t 반복키 재배치
+map({ "n", "x", "o" }, "m", ",", { noremap = true, silent = true, desc = "Repeat f/t (prev)" })
 map({ "n", "x", "o" }, ",", ";", { noremap = true, silent = true, desc = "Repeat f/t (next)" })
 
--- (선택) 마크 기능 대체: 필요 시 주석 해제
--- map({ "n", "x" }, "mm", "m", { noremap = true, silent = true, desc = "Mark (fallback)" })
-
--- 3) Shift+W/B → 비주얼 확장
+-- Shift+W/B → 비주얼 확장
 map("n", "W", function()
 	vim.cmd("normal! v")
 	motions.smart_w_visual()
 end, { noremap = true, silent = true, desc = "Visual smart-W" })
 map("x", "W", motions.smart_w_visual, { noremap = true, silent = true, desc = "Visual smart-W" })
-
 map("n", "B", function()
 	vim.cmd("normal! v")
 	motions.smart_b_visual()
 end, { noremap = true, silent = true, desc = "Visual smart-B" })
 map("x", "B", motions.smart_b_visual, { noremap = true, silent = true, desc = "Visual smart-B" })
 
--- helper: Normal → 비주얼 시작 후 count 만큼 이동
+-- H/J/K/L: 비주얼 켜고 연속 이동/확장
 local function n_vis(dir)
 	local cnt = vim.v.count > 0 and vim.v.count or 1
 	vim.cmd(("normal! v%d%s"):format(cnt, dir))
 end
-
--- helper: Visual → 선택을 count 만큼 확장
 local function x_vis(dir)
 	local cnt = vim.v.count > 0 and vim.v.count or 1
 	vim.cmd(("normal! %d%s"):format(cnt, dir))
 end
-
--- Shift+H/J/K/L : 비주얼 켜고 이동/확장
-map("n", "H", function()
-	n_vis("h")
-end, { noremap = true, silent = true, desc = "Visual: left" })
-map("x", "H", function()
-	x_vis("h")
-end, { noremap = true, silent = true, desc = "Extend: left" })
-
 pcall(vim.keymap.del, "x", "K")
 pcall(vim.keymap.del, "n", "K")
-map("n", "K", function()
-	n_vis("k")
-end, { noremap = true, silent = true, desc = "Visual: left" })
 pcall(vim.keymap.del, "o", "K")
-map("x", "K", function()
-	x_vis("k")
-end, { noremap = true, silent = true, desc = "Extend: left" })
-
+map("n", "H", function()
+	n_vis("h")
+end, { noremap = true, silent = true, desc = "Visual ←" })
+map("x", "H", function()
+	x_vis("h")
+end, { noremap = true, silent = true, desc = "Extend ←" })
 map("n", "J", function()
 	n_vis("j")
-end, { noremap = true, silent = true, desc = "Visual: down" })
+end, { noremap = true, silent = true, desc = "Visual ↓" })
 map("x", "J", function()
 	x_vis("j")
-end, { noremap = true, silent = true, desc = "Extend: down" })
-
+end, { noremap = true, silent = true, desc = "Extend ↓" })
+map("n", "K", function()
+	n_vis("k")
+end, { noremap = true, silent = true, desc = "Visual ↑" })
+map("x", "K", function()
+	x_vis("k")
+end, { noremap = true, silent = true, desc = "Extend ↑" })
 map("n", "L", function()
 	n_vis("l")
-end, { noremap = true, silent = true, desc = "Visual: right" })
+end, { noremap = true, silent = true, desc = "Visual →" })
 map("x", "L", function()
 	x_vis("l")
-end, { noremap = true, silent = true, desc = "Visual: right" })
+end, { noremap = true, silent = true, desc = "Extend →" })
 
 -- 현재만 남기고 전부 닫기
 local function close_others_keep_current()
@@ -145,58 +147,56 @@ end
 map("n", "<leader>Q", close_others_keep_current, { silent = true, desc = "Close all others" })
 map("n", "<leader>q", "<cmd>bdelete<CR>", { silent = true, desc = "Close buffer" })
 
--- Normal: % → 비주얼로 매칭까지 선택
+-- 매칭까지 선택
 map("n", "%", function()
 	vim.cmd("normal! v%")
-end, { noremap = true, silent = true, desc = "Visual select to matching pair" })
+end, { noremap = true, silent = true, desc = "Select to match" })
 
--- Alt+Shift+J/K 스왑
-map("n", "<M-J>", "<cmd>m .+1<CR>==", { noremap = true, silent = true, desc = "Swap line with below" })
-map("n", "<M-K>", "<cmd>m .-2<CR>==", { noremap = true, silent = true, desc = "Swap line with above" })
-
--- Visual 선택 이동
-map("x", "<M-J>", ":m '>+1<CR>gv=gv", { noremap = true, silent = true, desc = "Move selection down" })
-map("x", "<M-K>", ":m '<-2<CR>gv=gv", { noremap = true, silent = true, desc = "Move selection up" })
+-- 라인 스왑 / 선택 이동
+map("n", "<M-J>", "<cmd>m .+1<CR>==", { noremap = true, silent = true, desc = "Swap line ↓" })
+map("n", "<M-K>", "<cmd>m .-2<CR>==", { noremap = true, silent = true, desc = "Swap line ↑" })
+map("x", "<M-J>", ":m '>+1<CR>gv=gv", { noremap = true, silent = true, desc = "Move selection ↓" })
+map("x", "<M-K>", ":m '<-2<CR>gv=gv", { noremap = true, silent = true, desc = "Move selection ↑" })
 
 -- 화면 스크롤
-map({ "n", "x" }, "<M-j>", "<C-d>zz", { noremap = true, silent = true, desc = "Half-page down (center)" })
-map({ "n", "x" }, "<M-k>", "<C-u>zz", { noremap = true, silent = true, desc = "Half-page up (center)" })
+map({ "n", "x" }, "<M-j>", "<C-d>zz", { noremap = true, silent = true, desc = "Half-page ↓ (center)" })
+map({ "n", "x" }, "<M-k>", "<C-u>zz", { noremap = true, silent = true, desc = "Half-page ↑ (center)" })
 
 -- 전체 선택
 map({ "n", "x" }, "<M-a>", "ggVG", { desc = "Select all" })
 
--- Neovim 0.11: get_clients로 대체
+-- =========================================================
+-- LSP / Telescope
+-- =========================================================
 
--- 그 함수, 클래스를 위주로 조사
-vim.keymap.set("n", "gr", function()
+-- 참조: LSP 우선 → Telescope → grep 폴백
+map("n", "gr", function()
 	local bufnr = vim.api.nvim_get_current_buf()
 	if motions.lsp_supports(bufnr, "textDocument/references") then
-		-- 지원 서버가 있으면 LSP 참조를 우선
-		local ok, tb = pcall(require, "telescope.builtin")
-		if ok then
+		local tb = safe_require("telescope.builtin")
+		if tb then
 			tb.lsp_references({ include_declaration = false, show_line = false })
 		else
 			vim.lsp.buf.references(nil, { loclist = true })
-			vim.cmd("lopen") -- 목록창 열어주기
+			vim.cmd("lopen")
 		end
 	else
-		-- 지원 서버 없으면 grep 폴백 (에러 안 뜸)
 		local w = vim.fn.expand("<cword>")
-		local ok, tb = pcall(require, "telescope.builtin")
-		if ok then
+		local tb = safe_require("telescope.builtin")
+		if tb then
 			tb.grep_string({ search = w })
 		else
 			vim.cmd("silent! vimgrep /\\<" .. w .. "\\>/gj **/* | copen")
 		end
 	end
-end, { silent = true, desc = "References (smart: LSP→Telescope/grep)" })
+end, { silent = true, desc = "References (smart)" })
 
--- keymaps.lua (gd)
-vim.keymap.set("n", "gd", function()
+-- 정의
+map("n", "gd", function()
 	local bufnr = vim.api.nvim_get_current_buf()
 	if motions.lsp_supports(bufnr, "textDocument/definition") then
-		local ok, tb = motions.have("telescope.builtin")
-		if ok then
+		local tb = safe_require("telescope.builtin")
+		if tb then
 			tb.lsp_definitions({ reuse_win = true })
 		else
 			vim.lsp.buf.definition()
@@ -206,8 +206,8 @@ vim.keymap.set("n", "gd", function()
 	end
 end, { silent = true, desc = "LSP Definition" })
 
--- hover: 너는 'e'를 쓰고 있으니 그대로 유지 (충돌 감수)
-vim.keymap.set("n", "e", function()
+-- Hover (사용자: 'e' 사용)
+map("n", "e", function()
 	local bufnr = 0
 	if motions.lsp_supports(bufnr, "textDocument/hover") then
 		vim.lsp.buf.hover()
@@ -216,8 +216,8 @@ vim.keymap.set("n", "e", function()
 	end
 end, { silent = true, desc = "Hover" })
 
--- rename
-vim.keymap.set("n", "<leader>rn", function()
+-- Rename
+map("n", "<leader>rn", function()
 	local bufnr = 0
 	if motions.lsp_supports(bufnr, "textDocument/rename") then
 		vim.lsp.buf.rename()
@@ -226,45 +226,109 @@ vim.keymap.set("n", "<leader>rn", function()
 	end
 end, { silent = true, desc = "Rename symbol" })
 
--- 일반 Code Action
-vim.keymap.set({ "n", "v" }, "<leader>ca", function()
-	vim.lsp.buf.code_action({ apply = false }) -- ✅ 미리보기/선택 후 적용
+-- Code Actions (미리보기)
+map({ "n", "v" }, "<leader>ca", function()
+	vim.lsp.buf.code_action({ apply = false })
 end, { desc = "Code Action (preview)" })
 
 -- Organize Imports (미리보기)
-vim.keymap.set("n", "<leader>co", function()
-	vim.lsp.buf.code_action({
-		context = { only = { "source.organizeImports" } },
-		apply = false, -- ✅
-	})
+map("n", "<leader>co", function()
+	vim.lsp.buf.code_action({ context = { only = { "source.organizeImports" } }, apply = false })
 end, { desc = "Organize Imports (preview)" })
 
--- 다음/이전 진단(에러·경고 포함)
-local float_opts = { border = "rounded", focus = false, source = "if_many" }
-
-vim.keymap.set("n", "]d", function()
-	vim.diagnostic.goto_next({ float = float_opts, wrap = true })
+-- 진단 이동 + 팝업
+map("n", "]d", function()
+	vim.diagnostic.goto_next({ float = diag_float_opts, wrap = true })
 end, { desc = "Next diagnostic + popup" })
-
-vim.keymap.set("n", "[d", function()
-	vim.diagnostic.goto_prev({ float = float_opts, wrap = true })
+map("n", "[d", function()
+	vim.diagnostic.goto_prev({ float = diag_float_opts, wrap = true })
 end, { desc = "Prev diagnostic + popup" })
-
--- 커서 위치의 에러/경고 설명 표시 (이동 X)
-local float_opts = { border = "rounded", focus = false, source = "if_many" }
-vim.keymap.set("n", "gl", function()
-  vim.diagnostic.open_float(nil, float_opts) -- scope=cursor(기본 line). 둘 다 커서 주변에 뜸
+-- 커서 위치 설명 (이동 X)
+map("n", "gl", function()
+	vim.diagnostic.open_float(nil, diag_float_opts)
 end, { desc = "Show diagnostics here" })
+-- 진단 Quickfix
+map("n", "<leader>dq", vim.diagnostic.setqflist, { desc = "Diagnostics → quickfix" })
 
--- 버퍼/프로젝트 전체 진단 목록(quickfix)
-vim.keymap.set("n", "<leader>dq", vim.diagnostic.setqflist, { desc = "Diagnostics → quickfix" })
+-- =========================================================
+-- Formatting (Conform)
+-- =========================================================
+map({ "n", "v" }, "<leader>f", function()
+	local conform = safe_require("conform")
+	if not conform then
+		return
+	end
+	local opts = { async = false, lsp_fallback = true, timeout_ms = 2000 }
 
--- <leader>f : 파일 전체 or 비주얼 선택영역 포맷
-vim.keymap.set({ "n", "v" }, "<leader>f", function()
-	require("conform").format({
-		async = false,
-		lsp_fallback = true,
-		timeout_ms = 2000, -- 네가 opts에 준 값과 맞춰도 되고, 여기서만 다르게 줘도 됨
+	-- 비주얼 모드면 선택 범위만 포맷
+	local m = vim.api.nvim_get_mode().mode
+	if m == "v" or m == "V" or m == "\22" then
+		local s = vim.api.nvim_buf_get_mark(0, "<")
+		local e = vim.api.nvim_buf_get_mark(0, ">")
+		opts.range = { start = { s[1] - 1, s[2] }, ["end"] = { e[1] - 1, e[2] } }
+	end
+	conform.format(opts)
+end, { desc = "Format (file/selection)" })
+
+-- =========================================================
+-- Telescope: 루트 기준 검색
+-- =========================================================
+local function project_root()
+	if motions and motions.project_root then
+		return motions.project_root()
+	end
+	return vim.loop.cwd()
+end
+
+map("n", "<leader>ff", function()
+	local tb = safe_require("telescope.builtin")
+	if not tb then
+		return
+	end
+	tb.find_files({ cwd = project_root() })
+end, { desc = "Find files (project root)" })
+
+map("n", "<leader>sg", function()
+	local tb = safe_require("telescope.builtin")
+	if not tb then
+		return
+	end
+	tb.live_grep({
+		cwd = project_root(),
+		additional_args = function()
+			return { "--hidden", "--glob", "!.git/*" }
+		end,
 	})
-end, { desc = "Format file or range (Conform)" })
--- -, _으로 범위 변경하는것은 webdev.lua의 페이지에nvim-treesitter.configs 내부에 설정되어있다
+end, { desc = "Live grep (project root)" })
+
+map("n", "<leader>sw", function()
+	local tb = safe_require("telescope.builtin")
+	if not tb then
+		return
+	end
+	tb.grep_string({
+		cwd = project_root(),
+		word_match = "-w",
+		additional_args = function()
+			return { "--hidden", "--glob", "!.git/*" }
+		end,
+	})
+end, { desc = "Grep word under cursor (root)" })
+
+-- =========================================================
+-- CodeCompanion
+-- =========================================================
+map("n", "<leader>cc", "<cmd>CodeCompanionChat<CR>", { desc = "CodeCompanion: Chat" })
+map("v", "<leader>ci", "<cmd>CodeCompanionInline<CR>", { desc = "CodeCompanion: Inline edit" })
+map("v", "<leader>cp", "<cmd>CodeCompanionPrompt<CR>", { desc = "CodeCompanion: Prompt on selection" })
+map("n", "<leader>cx", "<cmd>CodeCompanionCancel<CR>", { desc = "CodeCompanion: Cancel" })
+map("n", "<leader>cL", "<cmd>CodeCompanionLogs<CR>", { desc = "CodeCompanion: Logs" })
+
+do
+	local tb = safe_require("telescope.builtin")
+	if tb then
+		map("n", "<leader>cP", "<cmd>Telescope codecompanion prompts<CR>", { desc = "CodeCompanion: Browse prompts" })
+	end
+end
+
+-- 참고: 범위 변경 키(-, _)는 webdev.lua의 treesitter 설정에 있음
