@@ -19,8 +19,8 @@ local diag_float_opts = { border = "rounded", focus = false, source = "if_many" 
 -- =========================================================
 
 -- 버퍼 이동 (WezTerm: Cmd+Shift+[ / ] → Alt+{ / Alt+})
-map("n", "<M-{>", "<cmd>bprevious<CR>", { silent = true, desc = "Prev buffer" })
-map("n", "<M-}>", "<cmd>bnext<CR>", { silent = true, desc = "Next buffer" })
+map("n", "<S-Tab>", "<cmd>bprevious<CR>", { silent = true, desc = "Prev buffer" })
+map("n", "<Tab>", "<cmd>bnext<CR>", { silent = true, desc = "Next buffer" })
 
 -- 파일 트리 (WezTerm: Cmd+1 → Alt+1)
 map("n", "<M-1>", "<cmd>Neotree toggle left reveal_force_cwd<CR>", { silent = true, desc = "Toggle file tree" })
